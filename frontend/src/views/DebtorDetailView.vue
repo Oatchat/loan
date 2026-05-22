@@ -23,6 +23,7 @@ const route = useRoute()
 const router = useRouter()
 const debtors = useDebtorsStore()
 const toast = useToast()
+const apiBase = import.meta.env.VITE_API_BASE_URL || '/api'
 
 const d = computed(() => debtors.current)
 const loaded = ref(false)
@@ -327,7 +328,7 @@ const bannerColor = computed(() => {
           <h2 class="t-h3 mb-4">เอกสารแนบ ({{ d.attachments.length }})</h2>
           <div class="grid grid-cols-2 gap-2.5">
             <a v-for="a in d.attachments" :key="a.id"
-              :href="`/api/debtors/${d.id}/attachments/${a.id}/download`" target="_blank"
+              :href="`${apiBase}/debtors/${d.id}/attachments/${a.id}/download`" target="_blank"
               class="aspect-square bg-ink-50 rounded-md flex flex-col items-center justify-center p-3 hover:bg-ink-100 transition-colors group">
               <DocumentArrowDownIcon class="w-7 h-7 text-ink-400 group-hover:text-brand mb-2" />
               <p class="text-[11px] text-ink-600 text-center line-clamp-2 break-all">{{ a.original_name }}</p>

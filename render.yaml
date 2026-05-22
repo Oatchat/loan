@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: debttrack-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    region: singapore
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "1440"
+      - key: DATABASE_URL
+        value: "sqlite:///./debttrack.db"
+      - key: CORS_ORIGINS
+        # Set this in Render dashboard once your Vercel URL is known.
+        # The app also auto-allows any *.vercel.app via regex.
+        value: "https://loan-seven-chi.vercel.app"
+      - key: UPLOAD_DIR
+        value: "./uploads"

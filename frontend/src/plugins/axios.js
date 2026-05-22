@@ -1,7 +1,11 @@
 import axios from 'axios'
 
+// In dev: hit Vite proxy at /api → http://localhost:8000
+// In prod: hit VITE_API_BASE_URL directly (e.g. https://debttrack-api.onrender.com)
+const baseURL = import.meta.env.VITE_API_BASE_URL || '/api'
+
 export const api = axios.create({
-  baseURL: '/api',
+  baseURL,
   headers: { 'Content-Type': 'application/json' },
 })
 
