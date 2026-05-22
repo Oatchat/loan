@@ -1,21 +1,25 @@
 import { computed } from 'vue'
 import dayjs from 'dayjs'
 
-function addMonths(date, n) {
-  return dayjs(date).add(n, 'month').toDate()
+function dueDateFor(monthNo, start, firstDue) {
+  // If firstDue is provided, anchor schedule on it (month 1 = firstDue)
+  // Else fall back to start + N months (month 1 = start + 1 month)
+  if (firstDue) return dayjs(firstDue).add(monthNo - 1, 'month').format('YYYY-MM-DD')
+  return dayjs(start).add(monthNo, 'month').format('YYYY-MM-DD')
 }
 
 /**
- * useInterestCalc(refs) — pass reactive refs for principal, ratePerMonth, months, type, startDate
+ * useInterestCalc(refs) — pass reactive refs for principal, ratePerMonth, months, type, startDate, firstDueDate (optional)
  * Returns: { totalInterest, monthlyPayment, totalPayment, schedule } as computed
  */
-export function useInterestCalc({ principal, ratePerMonth, months, interestType, startDate }) {
+export function useInterestCalc({ principal, ratePerMonth, months, interestType, startDate, firstDueDate }) {
   const result = computed(() => {
     const p = Math.max(0, Number(principal.value) || 0)
     const rPct = Math.max(0, Number(ratePerMonth.value) || 0)
     const m = Math.max(1, parseInt(months.value || 1))
     const type = interestType.value || 'flat'
     const start = startDate.value ? dayjs(startDate.value) : dayjs()
+    const firstDue = firstDueDate?.value || null
     const r = rPct / 100
 
     if (!p || !m) {
@@ -33,7 +37,7 @@ export function useInterestCalc({ principal, ratePerMonth, months, interestType,
         balance = Math.max(0, balance - monthlyPrincipal)
         schedule.push({
           month: i,
-          dueDate: start.add(i, 'month').format('YYYY-MM-DD'),
+          dueDate: dueDateFor(i, start, firstDue),
           payment: round(monthlyPayment),
           principal: round(monthlyPrincipal),
           interest: round(monthlyInterest),
@@ -61,7 +65,7 @@ export function useInterestCalc({ principal, ratePerMonth, months, interestType,
       totalInterest += interest
       schedule.push({
         month: i,
-        dueDate: start.add(i, 'month').format('YYYY-MM-DD'),
+        dueDate: dueDateFor(i, start, firstDue),
         payment: round(monthlyPayment),
         principal: round(principalPart),
         interest: round(interest),

@@ -27,10 +27,14 @@ class Debtor(SQLModel, table=True):
     interest_type: str = "flat"    # flat | compound | custom
     installments: int = 1
     start_date: date
+    first_due_date: Optional[date] = None   # if None, defaults to start_date + 1 month
 
-    # payment channel
+    # payment channel (เจ้าหนี้รับเงินคืนเข้าบัญชีไหน)
     bank: Optional[str] = None
     account_no: Optional[str] = None
+
+    # source of funds (เจ้าหนี้เอาเงินจากไหนมาปล่อยกู้)
+    funding_source: Optional[str] = None
 
     # state
     status: str = "active"         # active | near_due | overdue | closed

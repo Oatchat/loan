@@ -12,6 +12,7 @@ from .models import User, Debtor, Payment
 THAI_FIRST = ["สมชาย", "มานี", "ปิติ", "ชูใจ", "สุดา", "อนุชา", "พิมพ์", "กิตติ", "ณัฐ", "ปาริชาต"]
 THAI_LAST = ["รักไทย", "ใจดี", "ทองคำ", "ศรีสวัสดิ์", "พรหมมา", "เกษมสุข", "วงศ์ใหญ่", "บุญมา", "แสงทอง", "พิทักษ์"]
 BANKS = ["SCB", "KBANK", "BBL", "KTB", "TTB"]
+FUNDING_SOURCES = ["บัญชีออมทรัพย์ SCB", "เงินสด", "บัญชีธุรกิจ KBANK", "พร้อมเพย์ส่วนตัว"]
 INTEREST_TYPES = ["flat", "compound"]
 STATUSES_PLAN = ["overdue", "overdue", "near_due", "near_due", "near_due", "active", "active", "active", "closed", "closed"]
 
@@ -64,6 +65,7 @@ def run():
                 start_date=start,
                 bank=random.choice(BANKS),
                 account_no="".join(str(random.randint(0, 9)) for _ in range(10)),
+                funding_source=random.choice(FUNDING_SOURCES),
                 status="closed" if plan == "closed" else "active",
                 notes=None,
             )

@@ -59,6 +59,10 @@ export const useDebtorsStore = defineStore('debtors', {
       await this.fetchOne(id)
       return data
     },
+    async deletePayment(debtorId, paymentId) {
+      await api.delete(`/debtors/${debtorId}/payments/${paymentId}`)
+      await this.fetchOne(debtorId)
+    },
     async rollover(id, payload) {
       const { data } = await api.post(`/debtors/${id}/rollover`, payload)
       return data

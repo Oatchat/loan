@@ -28,7 +28,9 @@ function fresh() {
     name: '', phone: '', national_id: '', line_id: '', address: '',
     principal: '', interest_rate: 2, interest_type: 'flat', installments: 6,
     start_date: today,
+    first_due_date: '',
     bank: 'SCB', account_no: '',
+    funding_source: '',
     notes: '',
   }
 }
@@ -63,10 +65,11 @@ const rateRef = computed(() => Number(form.value.interest_rate) || 0)
 const monthsRef = computed(() => parseInt(form.value.installments) || 1)
 const typeRef = computed(() => form.value.interest_type)
 const startRef = computed(() => form.value.start_date)
+const firstDueRef = computed(() => form.value.first_due_date || null)
 
 const { totalInterest, monthlyPayment, totalPayment, schedule } = useInterestCalc({
   principal: principalRef, ratePerMonth: rateRef, months: monthsRef,
-  interestType: typeRef, startDate: startRef,
+  interestType: typeRef, startDate: startRef, firstDueDate: firstDueRef,
 })
 
 async function copyAccount() {
@@ -104,6 +107,7 @@ async function submit() {
       principal: Number(form.value.principal),
       interest_rate: Number(form.value.interest_rate),
       installments: parseInt(form.value.installments),
+      first_due_date: form.value.first_due_date || null,
     }
     let d
     if (props.mode === 'edit' && props.initial?.id) {
@@ -156,6 +160,9 @@ function onUploadError(msg) { toast.error(msg) }
             <BaseInput v-model="form.installments" type="number" label="จำนวนงวด (เดือน)" :error="errors.installments" required />
           </div>
           <BaseInput v-model="form.start_date" type="date" label="วันที่ยืม" :error="errors.start_date" required />
+          <BaseInput v-model="form.first_due_date" type="date" label="วันครบงวดแรก"
+            :error="errors.first_due_date"
+            hint="ถ้าไม่ระบุ จะใช้วันยืม + 1 เดือนอัตโนมัติ" />
           <div class="sm:col-span-2">
             <p class="t-caption mb-2 ml-1">รูปแบบการคิดดอก</p>
             <div class="flex flex-wrap gap-2">
@@ -192,17 +199,22 @@ function onUploadError(msg) { toast.error(msg) }
       </div>
     </section>
 
-    <!-- Section 3: payment channel -->
+    <!-- Section 3: payment channel + funding source -->
     <section class="bg-white rounded-lg shadow-sm-soft border border-ink-100 p-6 sm:p-7">
-      <h2 class="t-h3 mb-4 flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-brand"></span> ช่องทางรับชำระ</h2>
+      <h2 class="t-h3 mb-4 flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-brand"></span> ช่องทางรับชำระ &amp; แหล่งเงิน</h2>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <BaseSelect v-model="form.bank" label="ธนาคาร" :options="banks" />
+        <BaseSelect v-model="form.bank" label="ธนาคาร (รับเงินคืน)" :options="banks" />
         <div class="relative">
           <BaseInput v-model="form.account_no" label="เลขบัญชี / พร้อมเพย์" />
           <button type="button" @click="copyAccount" v-if="form.account_no"
             class="absolute right-2 top-9 px-2.5 py-1 rounded-md text-[11px] text-brand bg-brand-light hover:bg-brand-light/80 font-medium">
             คัดลอก
           </button>
+        </div>
+        <div class="sm:col-span-2">
+          <BaseInput v-model="form.funding_source" label="แหล่งเงินที่ปล่อยกู้"
+            :error="errors.funding_source"
+            hint="เช่น &quot;บัญชีออมทรัพย์ SCB&quot;, &quot;เงินสด&quot;, &quot;วงเงินบัตร X&quot; — ตอนเก็บคืนจะได้ใส่กลับถูกที่" />
         </div>
       </div>
     </section>

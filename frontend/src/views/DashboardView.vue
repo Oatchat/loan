@@ -66,13 +66,23 @@ function statusVariant(s) {
       </BaseButton>
     </div>
 
-    <!-- stat cards -->
+    <!-- stat cards (clickable → filter list) -->
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-      <StatCard label="ลูกหนี้ทั้งหมด" :value="debtors.list.length" accent="info" :icon="UsersIcon" />
-      <StatCard label="ยอดปล่อยกู้รวม" :value="debtors.totalPrincipal" prefix="฿" accent="neutral" :icon="BanknotesIcon" />
-      <StatCard label="ดอกเบี้ยสะสม" :value="debtors.totalInterestEarned" prefix="฿" accent="success" :icon="ArrowTrendingUpIcon" />
-      <StatCard label="เกินกำหนด" :value="debtors.overdueCount" accent="danger" :icon="ExclamationTriangleIcon" />
-      <StatCard label="ปิดบัญชีแล้ว" :value="debtors.closedCount" accent="neutral" :icon="CheckCircleIcon" />
+      <router-link to="/debtors" class="focus-visible:outline-none rounded-lg">
+        <StatCard label="ลูกหนี้ทั้งหมด" :value="debtors.list.length" accent="info" :icon="UsersIcon" />
+      </router-link>
+      <router-link to="/reports" class="focus-visible:outline-none rounded-lg">
+        <StatCard label="ยอดปล่อยกู้รวม" :value="debtors.totalPrincipal" prefix="฿" accent="neutral" :icon="BanknotesIcon" />
+      </router-link>
+      <router-link to="/reports" class="focus-visible:outline-none rounded-lg">
+        <StatCard label="ดอกเบี้ยสะสม" :value="debtors.totalInterestEarned" prefix="฿" accent="success" :icon="ArrowTrendingUpIcon" />
+      </router-link>
+      <router-link :to="{ path: '/debtors', query: { status: 'overdue' } }" class="focus-visible:outline-none rounded-lg">
+        <StatCard label="เกินกำหนด" :value="debtors.overdueCount" accent="danger" :icon="ExclamationTriangleIcon" />
+      </router-link>
+      <router-link :to="{ path: '/debtors', query: { status: 'closed' } }" class="focus-visible:outline-none rounded-lg">
+        <StatCard label="ปิดบัญชีแล้ว" :value="debtors.closedCount" accent="neutral" :icon="CheckCircleIcon" />
+      </router-link>
     </div>
 
     <!-- overdue alert -->

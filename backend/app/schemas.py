@@ -41,9 +41,11 @@ class DebtorBase(BaseModel):
     interest_type: InterestType = "flat"
     installments: int = Field(ge=1, le=360)
     start_date: date
+    first_due_date: Optional[date] = None
 
     bank: Optional[str] = None
     account_no: Optional[str] = None
+    funding_source: Optional[str] = Field(default=None, max_length=200)
 
     notes: Optional[str] = Field(default=None, max_length=500)
 
@@ -63,8 +65,10 @@ class DebtorUpdate(BaseModel):
     interest_type: Optional[InterestType] = None
     installments: Optional[int] = Field(default=None, ge=1, le=360)
     start_date: Optional[date] = None
+    first_due_date: Optional[date] = None
     bank: Optional[str] = None
     account_no: Optional[str] = None
+    funding_source: Optional[str] = Field(default=None, max_length=200)
     status: Optional[Status] = None
     notes: Optional[str] = Field(default=None, max_length=500)
 
@@ -163,6 +167,7 @@ class InterestCalcIn(BaseModel):
     rate_per_month: float = Field(ge=0, le=30)
     months: int = Field(ge=1, le=360)
     interest_type: InterestType = "flat"
+    first_due_date: Optional[date] = None
 
 
 class ScheduleRow(BaseModel):

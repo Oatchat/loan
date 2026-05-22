@@ -12,12 +12,21 @@ def _add_months(d: date, months: int) -> date:
     return date(y, m, day)
 
 
+def _due_date_for(month_no: int, start_date: date, first_due_date: date | None) -> date:
+    """If first_due_date is set, anchor schedule on it; else fall back to start_date + N months."""
+    if first_due_date:
+        # month 1 → first_due_date, month 2 → first_due_date + 1 month, etc.
+        return _add_months(first_due_date, month_no - 1)
+    return _add_months(start_date, month_no)
+
+
 def calc_schedule(
     principal: float,
     rate_per_month: float,
     months: int,
     interest_type: str = "flat",
     start_date: date | None = None,
+    first_due_date: date | None = None,
 ) -> InterestCalcOut:
     start_date = start_date or date.today()
     rate = rate_per_month / 100.0
@@ -32,7 +41,7 @@ def calc_schedule(
             balance = max(0.0, balance - monthly_principal)
             rows.append(ScheduleRow(
                 month=m,
-                due_date=_add_months(start_date, m),
+                due_date=_due_date_for(m, start_date, first_due_date),
                 payment=round(monthly_payment, 2),
                 principal=round(monthly_principal, 2),
                 interest=round(monthly_interest, 2),
@@ -42,7 +51,6 @@ def calc_schedule(
         total_payment = monthly_payment * months
 
     elif interest_type == "compound":
-        # standard amortization
         if rate == 0:
             monthly_payment = principal / months
         else:
@@ -56,7 +64,7 @@ def calc_schedule(
             total_interest += interest
             rows.append(ScheduleRow(
                 month=m,
-                due_date=_add_months(start_date, m),
+                due_date=_due_date_for(m, start_date, first_due_date),
                 payment=round(monthly_payment, 2),
                 principal=round(principal_part, 2),
                 interest=round(interest, 2),
@@ -65,7 +73,7 @@ def calc_schedule(
         total_payment = monthly_payment * months
 
     else:  # custom — treat as flat for now (UI can override per row later)
-        return calc_schedule(principal, rate_per_month, months, "flat", start_date)
+        return calc_schedule(principal, rate_per_month, months, "flat", start_date, first_due_date)
 
     return InterestCalcOut(
         total_interest=round(total_interest, 2),
@@ -81,4 +89,5 @@ def calc_from_dto(dto: InterestCalcIn) -> InterestCalcOut:
         rate_per_month=dto.rate_per_month,
         months=dto.months,
         interest_type=dto.interest_type,
+        first_due_date=dto.first_due_date,
     )

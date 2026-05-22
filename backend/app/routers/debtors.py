@@ -19,7 +19,10 @@ router = APIRouter(prefix="/debtors", tags=["debtors"])
 
 def _enrich(d: Debtor) -> DebtorOut:
     total_paid = sum(p.amount for p in d.payments) if d.payments else 0.0
-    sched = calc_schedule(d.principal, d.interest_rate, d.installments, d.interest_type, d.start_date)
+    sched = calc_schedule(
+        d.principal, d.interest_rate, d.installments, d.interest_type,
+        d.start_date, d.first_due_date,
+    )
     balance = sched.total_payment - total_paid
     next_due = None
     days_until = None
@@ -55,8 +58,10 @@ def _enrich(d: Debtor) -> DebtorOut:
         interest_type=d.interest_type,  # type: ignore
         installments=d.installments,
         start_date=d.start_date,
+        first_due_date=d.first_due_date,
         bank=d.bank,
         account_no=d.account_no,
+        funding_source=d.funding_source,
         notes=d.notes,
         status=derived,  # type: ignore
         created_at=d.created_at,
@@ -173,7 +178,10 @@ def get_schedule(
     d = session.get(Debtor, debtor_id)
     if not d:
         raise HTTPException(status_code=404, detail="ไม่พบลูกหนี้")
-    return calc_schedule(d.principal, d.interest_rate, d.installments, d.interest_type, d.start_date)
+    return calc_schedule(
+        d.principal, d.interest_rate, d.installments, d.interest_type,
+        d.start_date, d.first_due_date,
+    )
 
 
 @router.post("/{debtor_id}/rollover", response_model=DebtorOut, status_code=status.HTTP_201_CREATED)
@@ -203,6 +211,7 @@ def rollover_debtor(
         start_date=payload.start_date,
         bank=orig.bank,
         account_no=orig.account_no,
+        funding_source=orig.funding_source,
         notes=payload.note or f"ทบจาก #{orig.id}",
         rollover_from_id=orig.id,
         rolled_amount=orig.principal,
@@ -219,4 +228,7 @@ calc_router = APIRouter(prefix="/calc", tags=["calc"])
 
 @calc_router.post("/interest", response_model=InterestCalcOut)
 def calc_interest(payload: InterestCalcIn, _: User = Depends(get_current_user)):
-    return calc_schedule(payload.principal, payload.rate_per_month, payload.months, payload.interest_type)
+    return calc_schedule(
+        payload.principal, payload.rate_per_month, payload.months, payload.interest_type,
+        first_due_date=payload.first_due_date,
+    )

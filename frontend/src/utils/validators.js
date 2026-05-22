@@ -19,8 +19,10 @@ export const debtorSchema = yup.object({
   interest_type: yup.string().oneOf(['flat', 'compound', 'custom']).required(),
   installments: yup.number().typeError('ต้องเป็นตัวเลข').integer('ต้องเป็นจำนวนเต็ม').min(1).max(360).required('กรุณากรอกจำนวนงวด'),
   start_date: yup.string().required('กรุณาเลือกวันที่ยืม'),
+  first_due_date: yup.string().nullable(),
   bank: yup.string().nullable(),
   account_no: yup.string().nullable(),
+  funding_source: yup.string().nullable().max(200, 'ไม่เกิน 200 ตัวอักษร'),
   notes: yup.string().nullable().max(500, 'ไม่เกิน 500 ตัวอักษร'),
 })
 

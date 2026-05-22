@@ -39,8 +39,10 @@ const rateRef = computed(() => d.value?.interest_rate || 0)
 const monthsRef = computed(() => d.value?.installments || 1)
 const typeRef = computed(() => d.value?.interest_type || 'flat')
 const startRef = computed(() => d.value?.start_date || dayjs().format('YYYY-MM-DD'))
+const firstDueRef = computed(() => d.value?.first_due_date || null)
 const { schedule } = useInterestCalc({
-  principal: principalRef, ratePerMonth: rateRef, months: monthsRef, interestType: typeRef, startDate: startRef,
+  principal: principalRef, ratePerMonth: rateRef, months: monthsRef,
+  interestType: typeRef, startDate: startRef, firstDueDate: firstDueRef,
 })
 
 const sortedPayments = computed(() =>
@@ -63,6 +65,19 @@ const enrichedSchedule = computed(() => {
 
 function statusVariant(s) {
   return { active: 'info', near_due: 'warning', overdue: 'danger', closed: 'neutral' }[s] || 'neutral'
+}
+
+// delete payment state
+const deletingPay = ref(null)
+const deletingPayLoading = ref(false)
+async function confirmDeletePayment() {
+  if (!deletingPay.value) return
+  deletingPayLoading.value = true
+  try {
+    await debtors.deletePayment(d.value.id, deletingPay.value.id)
+    toast.success('ลบรายการชำระเรียบร้อย')
+    deletingPay.value = null
+  } finally { deletingPayLoading.value = false }
 }
 
 // payment modal
@@ -245,9 +260,15 @@ const bannerColor = computed(() => {
                   <p class="text-[12px] text-ink-400">{{ formatDate(p.paid_date) }}<span v-if="p.installment_no"> • งวด {{ p.installment_no }}</span></p>
                   <p v-if="p.note" class="text-[12px] text-ink-600 mt-1">"{{ p.note }}"</p>
                 </div>
-                <BaseBadge :variant="p.status === 'late' ? 'warning' : 'success'">
-                  {{ p.status === 'late' ? 'ล่าช้า' : 'ชำระแล้ว' }}
-                </BaseBadge>
+                <div class="flex items-center gap-1">
+                  <BaseBadge :variant="p.status === 'late' ? 'warning' : 'success'">
+                    {{ p.status === 'late' ? 'ล่าช้า' : 'ชำระแล้ว' }}
+                  </BaseBadge>
+                  <button @click="deletingPay = p" title="ลบรายการนี้"
+                    class="p-1.5 rounded hover:bg-red-50 text-ink-400 hover:text-danger transition-colors">
+                    <TrashIcon class="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -308,19 +329,23 @@ const bannerColor = computed(() => {
             <div class="flex justify-between"><dt class="text-ink-400">อัตราดอก</dt><dd class="tabular-nums">{{ d.interest_rate }}%/ด</dd></div>
             <div class="flex justify-between"><dt class="text-ink-400">จำนวนงวด</dt><dd class="tabular-nums">{{ d.installments }} เดือน</dd></div>
             <div class="flex justify-between"><dt class="text-ink-400">วันที่ยืม</dt><dd>{{ formatDate(d.start_date) }}</dd></div>
+            <div v-if="d.first_due_date" class="flex justify-between"><dt class="text-ink-400">วันครบงวดแรก</dt><dd>{{ formatDate(d.first_due_date) }}</dd></div>
             <div class="h-px bg-ink-100 my-2"></div>
             <div class="flex justify-between"><dt class="text-ink-400">จ่ายแล้ว</dt><dd class="tabular-nums text-green-600">{{ formatBaht(d.total_paid) }}</dd></div>
             <div class="flex justify-between"><dt class="text-ink-400">คงเหลือ</dt><dd class="tabular-nums text-brand font-semibold">{{ formatBaht(d.balance) }}</dd></div>
           </dl>
         </section>
 
-        <section v-if="d.bank || d.account_no" class="bg-white rounded-lg shadow-sm-soft border border-ink-100 p-6">
-          <h2 class="t-h3 mb-4">ช่องทางรับชำระ</h2>
-          <div class="flex items-center justify-between gap-3">
-            <div>
-              <p class="text-[12px] text-ink-400">{{ d.bank }}</p>
-              <p class="text-[16px] font-semibold tabular-nums">{{ d.account_no }}</p>
-            </div>
+        <section v-if="d.bank || d.account_no || d.funding_source" class="bg-white rounded-lg shadow-sm-soft border border-ink-100 p-6">
+          <h2 class="t-h3 mb-4">ช่องทางการเงิน</h2>
+          <div v-if="d.bank || d.account_no" class="mb-4">
+            <p class="text-[11px] text-ink-400 uppercase tracking-wide mb-1">รับเงินคืน</p>
+            <p class="text-[12px] text-ink-400">{{ d.bank }}</p>
+            <p class="text-[16px] font-semibold tabular-nums">{{ d.account_no }}</p>
+          </div>
+          <div v-if="d.funding_source" :class="d.bank || d.account_no ? 'pt-4 border-t border-ink-100' : ''">
+            <p class="text-[11px] text-ink-400 uppercase tracking-wide mb-1">แหล่งเงินที่ปล่อยกู้</p>
+            <p class="text-[14px] text-ink-900">{{ d.funding_source }}</p>
           </div>
         </section>
 
@@ -382,5 +407,11 @@ const bannerColor = computed(() => {
       :message="`ข้อมูลและรายการชำระทั้งหมดจะถูกลบถาวร — การกระทำนี้ไม่สามารถยกเลิกได้`"
       confirm-text="ลบถาวร" variant="danger" :loading="delLoading"
       @confirm="doDelete" @close="showDel = false" />
+
+    <ConfirmModal :open="!!deletingPay"
+      title="ลบรายการชำระ?"
+      :message="deletingPay ? `ลบรายการชำระ ${formatBaht(deletingPay.amount)} วันที่ ${formatDate(deletingPay.paid_date)} — ยอดคงเหลือจะถูกคำนวณใหม่` : ''"
+      confirm-text="ลบรายการนี้" variant="danger" :loading="deletingPayLoading"
+      @confirm="confirmDeletePayment" @close="deletingPay = null" />
   </div>
 </template>
