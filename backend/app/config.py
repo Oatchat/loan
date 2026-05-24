@@ -36,10 +36,14 @@ class Settings(BaseSettings):
         if self.use_turso:
             url = self.turso_database_url
             if url.startswith("libsql://"):
-                return "sqlite+libsql://" + url[len("libsql://"):]
-            if url.startswith("https://"):
-                return "sqlite+libsql://" + url[len("https://"):]
-            return url
+                host = url[len("libsql://"):]
+            elif url.startswith("https://"):
+                host = url[len("https://"):]
+            else:
+                host = url
+            host = host.rstrip("/")
+            # `secure=true` makes the libsql driver use HTTPS to talk to Hrana.
+            return f"sqlite+libsql://{host}/?secure=true"
         return self.database_url
 
 
