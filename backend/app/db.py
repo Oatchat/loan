@@ -11,7 +11,7 @@ _is_sqlite = _db_url.startswith("sqlite")
 # Local pysqlite uses check_same_thread, which libsql rejects.
 connect_args: dict = {}
 if _is_libsql:
-    connect_args = {"auth_token": settings.turso_auth_token, "secure": True}
+    connect_args = {"auth_token": settings.turso_auth_token}
 elif _is_sqlite:
     connect_args["check_same_thread"] = False
 
