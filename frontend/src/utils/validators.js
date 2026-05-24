@@ -1,7 +1,7 @@
 import * as yup from 'yup'
 
 export const loginSchema = yup.object({
-  email: yup.string().email('รูปแบบอีเมลไม่ถูกต้อง').required('กรุณากรอกอีเมล'),
+  username: yup.string().min(3, 'ผู้ใช้อย่างน้อย 3 ตัวอักษร').required('กรุณากรอกชื่อผู้ใช้'),
   password: yup.string().min(4, 'รหัสผ่านอย่างน้อย 4 ตัวอักษร').required('กรุณากรอกรหัสผ่าน'),
 })
 

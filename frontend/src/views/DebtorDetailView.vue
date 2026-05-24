@@ -49,12 +49,25 @@ const sortedPayments = computed(() =>
   [...(d.value?.payments || [])].sort((a, b) => dayjs(a.paid_date).valueOf() - dayjs(b.paid_date).valueOf())
 )
 
+const paymentsByInstallment = computed(() => {
+  const map = new Map()
+  for (const p of sortedPayments.value) {
+    if (p.installment_no != null && !map.has(p.installment_no)) map.set(p.installment_no, p)
+  }
+  // fallback: payments without installment_no — fill remaining slots in order
+  const orphans = sortedPayments.value.filter(p => p.installment_no == null)
+  return { map, orphans }
+})
+
 const enrichedSchedule = computed(() => {
-  const payments = sortedPayments.value
-  return schedule.value.map((row, idx) => {
-    const matched = payments[idx]
+  const { map, orphans } = paymentsByInstallment.value
+  let orphanIdx = 0
+  return schedule.value.map((row) => {
+    let matched = map.get(row.month)
+    if (!matched && orphanIdx < orphans.length) matched = orphans[orphanIdx++]
     return {
       ...row,
+      payment_id: matched?.id ?? null,
       paid: matched?.amount ?? null,
       paid_date: matched?.paid_date ?? null,
       status: matched ? (dayjs(matched.paid_date).isAfter(dayjs(row.dueDate)) ? 'late' : 'paid')
@@ -82,9 +95,86 @@ async function confirmDeletePayment() {
 
 // payment modal
 const showPay = ref(false)
-const pay = ref({ amount: '', paid_date: dayjs().format('YYYY-MM-DD'), note: '' })
+const pay = ref({ amount: '', paid_date: dayjs().format('YYYY-MM-DD'), note: '', installment_no: null })
 const payErrors = ref({})
 const payLoading = ref(false)
+const payInstallmentMeta = ref(null)  // { month, dueDate, payment } when opened from tick
+
+function openPayBlank() {
+  pay.value = { amount: '', paid_date: dayjs().format('YYYY-MM-DD'), note: '', installment_no: null }
+  payInstallmentMeta.value = null
+  payErrors.value = {}
+  showPay.value = true
+}
+
+// ── Multi-tick selection in schedule table ───────────────────────────────────
+const selectedMonths = ref(new Set())
+
+function toggleScheduleRow(row) {
+  if (row.status === 'paid' || row.status === 'late') {
+    askUntick(row)  // already-paid rows → confirm-delete (single)
+    return
+  }
+  const s = new Set(selectedMonths.value)
+  if (s.has(row.month)) s.delete(row.month)
+  else s.add(row.month)
+  selectedMonths.value = s
+}
+
+const selectedRows = computed(() =>
+  enrichedSchedule.value.filter(r => selectedMonths.value.has(r.month))
+)
+
+const selectedTotal = computed(() =>
+  selectedRows.value.reduce((sum, r) => sum + (r.payment || 0), 0)
+)
+
+function clearSelection() {
+  selectedMonths.value = new Set()
+}
+
+// ── Bulk pay modal ───────────────────────────────────────────────────────────
+const showBulkPay = ref(false)
+const bulkPay = ref({ paid_date: dayjs().format('YYYY-MM-DD'), note: '' })
+const bulkPayErrors = ref({})
+const bulkPayLoading = ref(false)
+
+function openBulkPay() {
+  if (!selectedRows.value.length) return
+  bulkPay.value = { paid_date: dayjs().format('YYYY-MM-DD'), note: '' }
+  bulkPayErrors.value = {}
+  showBulkPay.value = true
+}
+
+async function submitBulkPay() {
+  bulkPayErrors.value = {}
+  if (!bulkPay.value.paid_date) {
+    bulkPayErrors.value = { paid_date: 'กรุณาเลือกวันที่ชำระ' }
+    return
+  }
+  const rows = selectedRows.value
+  if (!rows.length) return
+  bulkPayLoading.value = true
+  try {
+    // Sequential to keep installment_no order deterministic and avoid SQLite contention.
+    for (const r of rows) {
+      await debtors.addPayment(d.value.id, {
+        amount: Math.round(r.payment * 100) / 100,
+        paid_date: bulkPay.value.paid_date,
+        note: bulkPay.value.note || null,
+        installment_no: r.month,
+      })
+    }
+    toast.success(`บันทึกชำระ ${rows.length} งวด • รวม ${formatBaht(selectedTotal.value)}`)
+    showBulkPay.value = false
+    clearSelection()
+  } catch (e) {
+    toast.error('บันทึกบางงวดไม่สำเร็จ')
+  } finally {
+    bulkPayLoading.value = false
+  }
+}
+
 async function submitPayment() {
   payErrors.value = {}
   try {
@@ -95,11 +185,34 @@ async function submitPayment() {
   }
   payLoading.value = true
   try {
-    await debtors.addPayment(d.value.id, { ...pay.value, amount: Number(pay.value.amount) })
-    toast.success(`บันทึกชำระ ${formatBaht(pay.value.amount)} เรียบร้อย`)
+    const payload = {
+      amount: Number(pay.value.amount),
+      paid_date: pay.value.paid_date,
+      note: pay.value.note || null,
+    }
+    if (pay.value.installment_no != null) payload.installment_no = pay.value.installment_no
+    await debtors.addPayment(d.value.id, payload)
+    toast.success(`บันทึกชำระ ${formatBaht(payload.amount)} เรียบร้อย`)
     showPay.value = false
-    pay.value = { amount: '', paid_date: dayjs().format('YYYY-MM-DD'), note: '' }
+    pay.value = { amount: '', paid_date: dayjs().format('YYYY-MM-DD'), note: '', installment_no: null }
+    payInstallmentMeta.value = null
   } finally { payLoading.value = false }
+}
+
+// uncheck a paid row → confirm delete payment
+const untickTarget = ref(null)
+const untickLoading = ref(false)
+function askUntick(row) {
+  untickTarget.value = row
+}
+async function confirmUntick() {
+  if (!untickTarget.value?.payment_id) return
+  untickLoading.value = true
+  try {
+    await debtors.deletePayment(d.value.id, untickTarget.value.payment_id)
+    toast.success(`ลบรายการชำระงวด #${untickTarget.value.month} แล้ว`)
+    untickTarget.value = null
+  } finally { untickLoading.value = false }
 }
 
 // rollover modal
@@ -237,7 +350,7 @@ const bannerColor = computed(() => {
         <section class="bg-white rounded-lg shadow-sm-soft border border-ink-100 p-6">
           <div class="flex items-center justify-between mb-5">
             <h2 class="t-h3">ประวัติชำระ</h2>
-            <BaseButton variant="primary" size="sm" @click="showPay = true" :disabled="d.status === 'closed'">
+            <BaseButton variant="primary" size="sm" @click="openPayBlank" :disabled="d.status === 'closed'">
               <template #icon-left><BanknotesIcon class="w-4 h-4" /></template>บันทึกชำระ
             </BaseButton>
           </div>
@@ -281,6 +394,7 @@ const bannerColor = computed(() => {
             <table class="w-full text-[13px]">
               <thead>
                 <tr class="text-left text-ink-400 border-b border-ink-100">
+                  <th class="py-2 pr-3 font-medium w-[42px]" aria-label="ติ๊กชำระ"></th>
                   <th class="py-2 pr-3 font-medium">งวด</th>
                   <th class="py-2 pr-3 font-medium">วันครบ</th>
                   <th class="py-2 pr-3 font-medium text-right">ยอดต้อง</th>
@@ -290,7 +404,24 @@ const bannerColor = computed(() => {
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="row in enrichedSchedule" :key="row.month" class="border-b border-ink-100 last:border-0">
+                <tr v-for="row in enrichedSchedule" :key="row.month"
+                  class="border-b border-ink-100 last:border-0 group transition-colors"
+                  :class="[
+                    row.status === 'paid' || row.status === 'late' ? 'bg-green-50/30' : '',
+                    selectedMonths.has(row.month) ? 'bg-brand-light/40' : ''
+                  ]">
+                  <td class="py-2.5 pr-3">
+                    <label class="inline-flex items-center cursor-pointer select-none"
+                      :title="(row.status === 'paid' || row.status === 'late') ? 'คลิกเพื่อยกเลิกการชำระ' : 'คลิกเพื่อเลือก/ยกเลิก'">
+                      <input
+                        type="checkbox"
+                        :checked="row.status === 'paid' || row.status === 'late' || selectedMonths.has(row.month)"
+                        :disabled="d.status === 'closed'"
+                        @change="toggleScheduleRow(row)"
+                        class="w-[18px] h-[18px] rounded border-ink-300 text-brand focus:ring-brand/40 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                      />
+                    </label>
+                  </td>
                   <td class="py-2.5 pr-3 text-ink-600">#{{ row.month }}</td>
                   <td class="py-2.5 pr-3">{{ formatDate(row.dueDate) }}</td>
                   <td class="py-2.5 pr-3 text-right tabular-nums">{{ formatBaht(row.payment) }}</td>
@@ -368,6 +499,74 @@ const bannerColor = computed(() => {
         </section>
       </div>
     </div>
+
+    <!-- Sticky bulk-action toolbar for selected schedule rows -->
+    <transition
+      enter-active-class="transition duration-220 ease-apple"
+      enter-from-class="opacity-0 translate-y-3"
+      enter-to-class="opacity-100 translate-y-0"
+      leave-active-class="transition duration-150 ease-apple"
+      leave-from-class="opacity-100 translate-y-0"
+      leave-to-class="opacity-0 translate-y-3">
+      <div v-if="selectedRows.length"
+        class="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 bg-white shadow-lg-soft rounded-full border border-ink-100 px-4 py-2 flex items-center gap-3">
+        <p class="text-[13px] text-ink-900">
+          เลือก <strong class="text-brand">{{ selectedRows.length }}</strong> งวด
+          <span class="text-ink-400">• รวม</span>
+          <strong class="tabular-nums ml-1">{{ formatBaht(selectedTotal) }}</strong>
+        </p>
+        <BaseButton variant="ghost" size="sm" @click="clearSelection">ยกเลิก</BaseButton>
+        <BaseButton variant="primary" size="sm" @click="openBulkPay">
+          <template #icon-left><BanknotesIcon class="w-4 h-4" /></template>
+          บันทึกชำระ
+        </BaseButton>
+      </div>
+    </transition>
+
+    <!-- Bulk pay modal -->
+    <BaseModal :open="showBulkPay" :title="`บันทึกชำระ ${selectedRows.length} งวด`" size="md" @close="showBulkPay = false">
+      <div class="space-y-4">
+        <div class="max-h-[200px] overflow-y-auto rounded-md border border-ink-100">
+          <table class="w-full text-[12px]">
+            <thead class="bg-ink-50 sticky top-0">
+              <tr class="text-left text-ink-400">
+                <th class="px-3 py-2 font-medium">งวด</th>
+                <th class="px-3 py-2 font-medium">วันครบ</th>
+                <th class="px-3 py-2 font-medium text-right">ยอด</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="r in selectedRows" :key="r.month" class="border-t border-ink-100">
+                <td class="px-3 py-1.5 text-ink-600">#{{ r.month }}</td>
+                <td class="px-3 py-1.5">{{ formatDate(r.dueDate) }}</td>
+                <td class="px-3 py-1.5 text-right tabular-nums">{{ formatBaht(r.payment) }}</td>
+              </tr>
+            </tbody>
+            <tfoot class="bg-ink-50/50 border-t border-ink-100">
+              <tr>
+                <td colspan="2" class="px-3 py-2 text-ink-400">รวม</td>
+                <td class="px-3 py-2 text-right tabular-nums font-semibold">{{ formatBaht(selectedTotal) }}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <BaseInput v-model="bulkPay.paid_date" type="date" label="วันที่ชำระ (ใช้กับทุกงวด)" :error="bulkPayErrors.paid_date" required />
+        <BaseTextarea v-model="bulkPay.note" label="หมายเหตุ" rows="2" placeholder="ใช้กับทุกงวด (optional)" />
+      </div>
+      <template #actions>
+        <BaseButton variant="ghost" @click="showBulkPay = false">ยกเลิก</BaseButton>
+        <BaseButton variant="primary" :loading="bulkPayLoading" @click="submitBulkPay">
+          ยืนยันบันทึกชำระ
+        </BaseButton>
+      </template>
+    </BaseModal>
+
+    <!-- Untick confirm (single paid row) -->
+    <ConfirmModal :open="!!untickTarget"
+      title="ยกเลิกการชำระงวดนี้?"
+      :message="untickTarget ? `ลบรายการชำระงวด #${untickTarget.month} (${formatBaht(untickTarget.paid)}) — ยอดคงเหลือจะถูกคำนวณใหม่` : ''"
+      confirm-text="ยืนยันยกเลิก" variant="danger" :loading="untickLoading"
+      @confirm="confirmUntick" @close="untickTarget = null" />
 
     <!-- Payment modal -->
     <BaseModal :open="showPay" title="บันทึกชำระเงิน" @close="showPay = false">

@@ -13,13 +13,13 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/login", response_model=TokenOut)
 def login(payload: LoginIn, session: Session = Depends(get_session)):
-    user = session.exec(select(User).where(User.email == payload.email)).first()
+    user = session.exec(select(User).where(User.username == payload.username)).first()
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email หรือ password ไม่ถูกต้อง",
+            detail="Username หรือ password ไม่ถูกต้อง",
         )
-    token = create_access_token(sub=user.email)
+    token = create_access_token(sub=user.username)
     return TokenOut(access_token=token, user=UserOut.model_validate(user))
 
 

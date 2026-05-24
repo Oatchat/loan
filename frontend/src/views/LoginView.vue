@@ -12,8 +12,8 @@ const route = useRoute()
 const auth = useAuthStore()
 const toast = useToast()
 
-const email = ref('admin@debttrack.app')
-const password = ref('admin1234')
+const username = ref('admin')
+const password = ref('admin')
 const errors = ref({})
 const shake = ref(false)
 const submitting = ref(false)
@@ -21,7 +21,7 @@ const submitting = ref(false)
 async function submit() {
   errors.value = {}
   try {
-    await loginSchema.validate({ email: email.value, password: password.value }, { abortEarly: false })
+    await loginSchema.validate({ username: username.value, password: password.value }, { abortEarly: false })
   } catch (e) {
     errors.value = Object.fromEntries((e.inner || []).map(x => [x.path, x.message]))
     shake.value = true
@@ -30,7 +30,7 @@ async function submit() {
   }
   submitting.value = true
   try {
-    await auth.login(email.value, password.value)
+    await auth.login(username.value, password.value)
     toast.success('ยินดีต้อนรับสู่ DebtTrack')
     router.push(route.query.redirect || '/')
   } catch (e) {
@@ -61,7 +61,7 @@ async function submit() {
         </div>
 
         <form @submit.prevent="submit" class="space-y-4">
-          <BaseInput v-model="email" type="email" label="อีเมล" :error="errors.email" required />
+          <BaseInput v-model="username" type="text" label="ชื่อผู้ใช้" :error="errors.username" required />
           <BaseInput v-model="password" type="password" label="รหัสผ่าน" :error="errors.password" required />
 
           <BaseButton type="submit" variant="primary" block :loading="submitting || auth.loading" class="!h-[46px] mt-2">
@@ -69,7 +69,7 @@ async function submit() {
           </BaseButton>
 
           <p class="text-center text-[11px] text-ink-400 pt-4 border-t border-ink-100/60">
-            demo: admin@debttrack.app / admin1234
+            demo: admin / admin
           </p>
         </form>
       </div>

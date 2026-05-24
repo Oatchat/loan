@@ -20,16 +20,16 @@ STATUSES_PLAN = ["overdue", "overdue", "near_due", "near_due", "near_due", "acti
 def run():
     init_db()
     with Session(engine) as s:
-        existing = s.exec(select(User).where(User.email == "admin@debttrack.app")).first()
+        existing = s.exec(select(User).where(User.username == "admin")).first()
         if not existing:
             admin = User(
-                email="admin@debttrack.app",
-                password_hash=hash_password("admin1234"),
+                username="admin",
+                password_hash=hash_password("admin"),
                 name="ผู้ดูแลระบบ",
             )
             s.add(admin)
             s.commit()
-            print("✓ Created admin user: admin@debttrack.app / admin1234")
+            print("✓ Created admin user: admin / admin")
 
         if s.exec(select(Debtor)).first():
             print("✓ Debtors already exist, skipping seed")

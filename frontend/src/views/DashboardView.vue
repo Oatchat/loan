@@ -10,6 +10,7 @@ import BaseButton from '../components/ui/BaseButton.vue'
 import BaseBadge from '../components/ui/BaseBadge.vue'
 import BaseTable from '../components/ui/BaseTable.vue'
 import EmptyState from '../components/shared/EmptyState.vue'
+import BulkDebtorActions from '../components/shared/BulkDebtorActions.vue'
 import { useDebtorsStore } from '../stores/debtors'
 import { formatBaht, formatDate, formatRelative, initials, avatarColor, statusLabel } from '../utils/formatters'
 import dayjs from 'dayjs'
@@ -17,6 +18,7 @@ import dayjs from 'dayjs'
 const router = useRouter()
 const debtors = useDebtorsStore()
 const showAlert = ref(true)
+const selectedIds = ref([])
 
 onMounted(() => debtors.fetchAll())
 
@@ -136,7 +138,8 @@ function statusVariant(s) {
           ดูทั้งหมด <ChevronRightIcon class="w-4 h-4" />
         </button>
       </div>
-      <BaseTable :columns="columns" :rows="recentRows" :loading="debtors.loading">
+      <BaseTable :columns="columns" :rows="recentRows" :loading="debtors.loading"
+        selectable v-model:selected="selectedIds">
         <template #cell-name="{ row }">
           <button @click="router.push(`/debtors/${row.id}`)" class="flex items-center gap-3 hover:opacity-80 text-left">
             <span class="w-9 h-9 rounded-full text-white font-semibold text-[12px] grid place-items-center"
@@ -170,5 +173,11 @@ function statusVariant(s) {
         </template>
       </BaseTable>
     </section>
+
+    <BulkDebtorActions
+      :debtors="debtors.list"
+      v-model:selectedIds="selectedIds"
+      @changed="debtors.fetchAll()"
+    />
   </div>
 </template>

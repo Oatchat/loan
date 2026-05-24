@@ -1,11 +1,11 @@
 from datetime import datetime, date
 from typing import Optional, Literal
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 
 # ─────────────── Auth ───────────────
 class LoginIn(BaseModel):
-    email: EmailStr
+    username: str = Field(min_length=3, max_length=64)
     password: str
 
 
@@ -17,7 +17,7 @@ class TokenOut(BaseModel):
 
 class UserOut(BaseModel):
     id: int
-    email: EmailStr
+    username: str
     name: str
 
     class Config:

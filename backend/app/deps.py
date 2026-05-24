@@ -21,7 +21,7 @@ def get_current_user(
             detail="Invalid or expired token",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    user = session.exec(select(User).where(User.email == payload["sub"])).first()
+    user = session.exec(select(User).where(User.username == payload["sub"])).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     return user

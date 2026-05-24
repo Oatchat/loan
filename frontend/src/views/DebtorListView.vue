@@ -8,6 +8,7 @@ import BaseTable from '../components/ui/BaseTable.vue'
 import BaseSelect from '../components/ui/BaseSelect.vue'
 import EmptyState from '../components/shared/EmptyState.vue'
 import ConfirmModal from '../components/shared/ConfirmModal.vue'
+import BulkDebtorActions from '../components/shared/BulkDebtorActions.vue'
 import { useDebtorsStore } from '../stores/debtors'
 import { formatBaht, formatRelative, initials, avatarColor, statusLabel } from '../utils/formatters'
 import { useToast } from 'vue-toastification'
@@ -35,6 +36,7 @@ const sortOptions = [
 const search = ref('')
 const status = ref(route.query.status || 'all')
 const sort = ref('recent')
+const selectedIds = ref([])
 
 async function refresh() {
   debtors.query = { q: search.value, status: status.value, sort: sort.value }
@@ -118,7 +120,8 @@ async function confirmDelete() {
       </button>
     </div>
 
-    <BaseTable :columns="columns" :rows="rows" :loading="debtors.loading">
+    <BaseTable :columns="columns" :rows="rows" :loading="debtors.loading"
+      selectable v-model:selected="selectedIds">
       <template #cell-name="{ row }">
         <button @click="router.push(`/debtors/${row.id}`)" class="flex items-center gap-3 hover:opacity-80 text-left">
           <span class="w-10 h-10 rounded-full text-white font-semibold text-[13px] grid place-items-center"
@@ -170,6 +173,12 @@ async function confirmDelete() {
         </EmptyState>
       </template>
     </BaseTable>
+
+    <BulkDebtorActions
+      :debtors="debtors.list"
+      v-model:selectedIds="selectedIds"
+      @changed="refresh()"
+    />
 
     <ConfirmModal :open="!!deleting"
       :title="`ลบ ${deleting?.name}?`"

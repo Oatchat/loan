@@ -65,7 +65,7 @@ function doLogout() {
             <MenuItems class="absolute right-0 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg-soft border border-ink-100 focus:outline-none overflow-hidden">
               <div class="px-4 py-3 border-b border-ink-100">
                 <p class="text-[13px] font-medium text-ink-900 truncate">{{ auth.user?.name }}</p>
-                <p class="text-[11px] text-ink-400 truncate">{{ auth.user?.email }}</p>
+                <p class="text-[11px] text-ink-400 truncate">@{{ auth.user?.username }}</p>
               </div>
               <MenuItem v-slot="{ active }">
                 <RouterLink to="/settings"

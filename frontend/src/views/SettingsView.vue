@@ -23,7 +23,7 @@ const userColor = computed(() => avatarColor(auth.user?.name))
           :style="{ background: userColor }">{{ userInitials }}</span>
         <div>
           <p class="text-[16px] font-medium text-ink-900">{{ auth.user?.name }}</p>
-          <p class="text-[13px] text-ink-400">{{ auth.user?.email }}</p>
+          <p class="text-[13px] text-ink-400">@{{ auth.user?.username }}</p>
         </div>
       </div>
     </BaseCard>
