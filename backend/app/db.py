@@ -7,9 +7,12 @@ _db_url = settings.effective_database_url
 _is_libsql = _db_url.startswith("sqlite+libsql://")
 _is_sqlite = _db_url.startswith("sqlite")
 
-# `check_same_thread` only applies to the local pysqlite driver — libsql doesn't accept it.
-connect_args = {}
-if _is_sqlite and not _is_libsql:
+# sqlalchemy-libsql expects auth_token + secure via connect_args, NOT URL query string.
+# Local pysqlite uses check_same_thread, which libsql rejects.
+connect_args: dict = {}
+if _is_libsql:
+    connect_args = {"auth_token": settings.turso_auth_token, "secure": True}
+elif _is_sqlite:
     connect_args["check_same_thread"] = False
 
 engine = create_engine(_db_url, connect_args=connect_args, echo=False)

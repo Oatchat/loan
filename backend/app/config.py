@@ -23,17 +23,23 @@ class Settings(BaseSettings):
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
     @property
+    def use_turso(self) -> bool:
+        return bool(self.turso_database_url and self.turso_auth_token)
+
+    @property
     def effective_database_url(self) -> str:
-        """Pick Turso when configured, else fall back to local sqlite."""
-        if self.turso_database_url and self.turso_auth_token:
+        """Pick Turso when configured, else fall back to local sqlite.
+
+        For Turso the auth_token + secure flag are passed via SQLAlchemy
+        `connect_args` (see db.py), so this URL never carries the token.
+        """
+        if self.use_turso:
             url = self.turso_database_url
-            # SQLAlchemy + sqlalchemy-libsql dialect uses the `sqlite+libsql://` scheme.
             if url.startswith("libsql://"):
-                url = "sqlite+libsql://" + url[len("libsql://"):]
-            elif url.startswith("https://"):
-                url = "sqlite+libsql://" + url[len("https://"):]
-            sep = "&" if "?" in url else "?"
-            return f"{url}{sep}authToken={self.turso_auth_token}&secure=true"
+                return "sqlite+libsql://" + url[len("libsql://"):]
+            if url.startswith("https://"):
+                return "sqlite+libsql://" + url[len("https://"):]
+            return url
         return self.database_url
 
 
