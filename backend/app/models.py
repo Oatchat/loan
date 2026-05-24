@@ -25,9 +25,10 @@ class Debtor(SQLModel, table=True):
     principal: float
     interest_rate: float           # percent per month
     interest_type: str = "flat"    # flat | compound | custom
-    installments: int = 1
+    installments: int = 1          # ignored when is_open_ended=True
     start_date: date
     first_due_date: Optional[date] = None   # if None, defaults to start_date + 1 month
+    is_open_ended: bool = False    # ยืมแบบไม่กำหนดงวด — ไม่มี schedule, ไม่มี due date
 
     # payment channel (เจ้าหนี้รับเงินคืนเข้าบัญชีไหน)
     bank: Optional[str] = None

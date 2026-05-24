@@ -328,7 +328,8 @@ const bannerColor = computed(() => {
         </BaseBadge>
         <p class="text-[14px] text-ink-900">
           คงเหลือ <strong class="tabular-nums">{{ formatBaht(d.balance) }}</strong>
-          <span v-if="d.next_due_date" class="text-ink-600"> • งวดถัดไป {{ formatRelative(d.next_due_date) }}</span>
+          <span v-if="d.is_open_ended" class="text-ink-600"> • ยืมแบบไม่กำหนดงวด</span>
+          <span v-else-if="d.next_due_date" class="text-ink-600"> • งวดถัดไป {{ formatRelative(d.next_due_date) }}</span>
         </p>
       </div>
     </div>
@@ -387,8 +388,8 @@ const bannerColor = computed(() => {
           </div>
         </section>
 
-        <!-- schedule table -->
-        <section class="bg-white rounded-lg shadow-sm-soft border border-ink-100 p-6">
+        <!-- schedule table — hidden for open-ended loans -->
+        <section v-if="!d.is_open_ended" class="bg-white rounded-lg shadow-sm-soft border border-ink-100 p-6">
           <h2 class="t-h3 mb-4">ตารางผ่อนชำระ</h2>
           <div class="overflow-x-auto">
             <table class="w-full text-[13px]">
@@ -456,11 +457,14 @@ const bannerColor = computed(() => {
           <h2 class="t-h3 mb-4">สรุปสัญญา</h2>
           <dl class="space-y-2.5 text-[13px]">
             <div class="flex justify-between"><dt class="text-ink-400">เงินต้น</dt><dd class="tabular-nums font-medium">{{ formatBaht(d.principal) }}</dd></div>
-            <div class="flex justify-between"><dt class="text-ink-400">รูปแบบดอก</dt><dd>{{ ({flat:'Flat',compound:'ทบต้น',custom:'กำหนดเอง'})[d.interest_type] }}</dd></div>
+            <div v-if="d.is_open_ended" class="flex justify-between"><dt class="text-ink-400">รูปแบบ</dt><dd>ไม่กำหนดงวด</dd></div>
+            <template v-else>
+              <div class="flex justify-between"><dt class="text-ink-400">รูปแบบดอก</dt><dd>{{ ({flat:'Flat',compound:'ทบต้น',custom:'กำหนดเอง'})[d.interest_type] }}</dd></div>
+            </template>
             <div class="flex justify-between"><dt class="text-ink-400">อัตราดอก</dt><dd class="tabular-nums">{{ d.interest_rate }}%/ด</dd></div>
-            <div class="flex justify-between"><dt class="text-ink-400">จำนวนงวด</dt><dd class="tabular-nums">{{ d.installments }} เดือน</dd></div>
+            <div v-if="!d.is_open_ended" class="flex justify-between"><dt class="text-ink-400">จำนวนงวด</dt><dd class="tabular-nums">{{ d.installments }} เดือน</dd></div>
             <div class="flex justify-between"><dt class="text-ink-400">วันที่ยืม</dt><dd>{{ formatDate(d.start_date) }}</dd></div>
-            <div v-if="d.first_due_date" class="flex justify-between"><dt class="text-ink-400">วันครบงวดแรก</dt><dd>{{ formatDate(d.first_due_date) }}</dd></div>
+            <div v-if="!d.is_open_ended && d.first_due_date" class="flex justify-between"><dt class="text-ink-400">วันครบงวดแรก</dt><dd>{{ formatDate(d.first_due_date) }}</dd></div>
             <div class="h-px bg-ink-100 my-2"></div>
             <div class="flex justify-between"><dt class="text-ink-400">จ่ายแล้ว</dt><dd class="tabular-nums text-green-600">{{ formatBaht(d.total_paid) }}</dd></div>
             <div class="flex justify-between"><dt class="text-ink-400">คงเหลือ</dt><dd class="tabular-nums text-brand font-semibold">{{ formatBaht(d.balance) }}</dd></div>

@@ -17,7 +17,13 @@ export const debtorSchema = yup.object({
   principal: yup.number().typeError('ต้องเป็นตัวเลข').positive('ต้องมากกว่า 0').max(10_000_000, 'ไม่เกิน 10,000,000').required('กรุณากรอกจำนวนเงิน'),
   interest_rate: yup.number().typeError('ต้องเป็นตัวเลข').min(0, 'ต้อง ≥ 0').max(30, 'ไม่เกิน 30%').required('กรุณากรอกอัตราดอกเบี้ย'),
   interest_type: yup.string().oneOf(['flat', 'compound', 'custom']).required(),
-  installments: yup.number().typeError('ต้องเป็นตัวเลข').integer('ต้องเป็นจำนวนเต็ม').min(1).max(360).required('กรุณากรอกจำนวนงวด'),
+  is_open_ended: yup.boolean().default(false),
+  installments: yup.number().typeError('ต้องเป็นตัวเลข').integer('ต้องเป็นจำนวนเต็ม').min(1).max(360)
+    .when('is_open_ended', {
+      is: true,
+      then: (s) => s.notRequired().nullable(),
+      otherwise: (s) => s.required('กรุณากรอกจำนวนงวด'),
+    }),
   start_date: yup.string().required('กรุณาเลือกวันที่ยืม'),
   first_due_date: yup.string().nullable(),
   bank: yup.string().nullable(),

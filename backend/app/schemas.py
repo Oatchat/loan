@@ -39,9 +39,10 @@ class DebtorBase(BaseModel):
     principal: float = Field(gt=0, le=10_000_000)
     interest_rate: float = Field(ge=0, le=30)
     interest_type: InterestType = "flat"
-    installments: int = Field(ge=1, le=360)
+    installments: int = Field(default=1, ge=1, le=360)
     start_date: date
     first_due_date: Optional[date] = None
+    is_open_ended: bool = False
 
     bank: Optional[str] = None
     account_no: Optional[str] = None
@@ -71,6 +72,7 @@ class DebtorUpdate(BaseModel):
     funding_source: Optional[str] = Field(default=None, max_length=200)
     status: Optional[Status] = None
     notes: Optional[str] = Field(default=None, max_length=500)
+    is_open_ended: Optional[bool] = None
 
 
 class AttachmentOut(BaseModel):

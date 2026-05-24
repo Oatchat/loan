@@ -19,32 +19,47 @@ router = APIRouter(prefix="/debtors", tags=["debtors"])
 
 def _enrich(d: Debtor) -> DebtorOut:
     total_paid = sum(p.amount for p in d.payments) if d.payments else 0.0
-    sched = calc_schedule(
-        d.principal, d.interest_rate, d.installments, d.interest_type,
-        d.start_date, d.first_due_date,
-    )
-    balance = sched.total_payment - total_paid
-    next_due = None
-    days_until = None
     today = date.today()
-    paid_count = len([p for p in d.payments if p.status == "paid"]) if d.payments else 0
-    if paid_count < d.installments:
-        idx = paid_count  # next unpaid
-        next_due = sched.schedule[idx].due_date if idx < len(sched.schedule) else None
-        if next_due:
-            days_until = (next_due - today).days
+    is_open = bool(getattr(d, "is_open_ended", False))
 
-    # derive status (computed; persisted status used if closed)
-    derived = d.status
-    if d.status != "closed":
-        if balance <= 0:
-            derived = "closed"
-        elif next_due and (next_due - today).days < 0:
-            derived = "overdue"
-        elif next_due and (next_due - today).days <= 7:
-            derived = "near_due"
-        else:
-            derived = "active"
+    if is_open:
+        # Open-ended: interest accrues per elapsed month (flat-style).
+        months_elapsed = max(0, (today.year - d.start_date.year) * 12 + (today.month - d.start_date.month))
+        accrued_interest = d.principal * (d.interest_rate / 100.0) * months_elapsed
+        total_payment = d.principal + accrued_interest
+        balance = total_payment - total_paid
+        next_due = None
+        days_until = None
+
+        derived = d.status
+        if d.status != "closed":
+            derived = "closed" if balance <= 0 else "active"
+    else:
+        sched = calc_schedule(
+            d.principal, d.interest_rate, d.installments, d.interest_type,
+            d.start_date, d.first_due_date,
+        )
+        balance = sched.total_payment - total_paid
+        next_due = None
+        days_until = None
+        paid_count = len([p for p in d.payments if p.status == "paid"]) if d.payments else 0
+        if paid_count < d.installments:
+            idx = paid_count  # next unpaid
+            next_due = sched.schedule[idx].due_date if idx < len(sched.schedule) else None
+            if next_due:
+                days_until = (next_due - today).days
+
+        # derive status (computed; persisted status used if closed)
+        derived = d.status
+        if d.status != "closed":
+            if balance <= 0:
+                derived = "closed"
+            elif next_due and (next_due - today).days < 0:
+                derived = "overdue"
+            elif next_due and (next_due - today).days <= 7:
+                derived = "near_due"
+            else:
+                derived = "active"
 
     return DebtorOut(
         id=d.id,
@@ -59,6 +74,7 @@ def _enrich(d: Debtor) -> DebtorOut:
         installments=d.installments,
         start_date=d.start_date,
         first_due_date=d.first_due_date,
+        is_open_ended=is_open,
         bank=d.bank,
         account_no=d.account_no,
         funding_source=d.funding_source,

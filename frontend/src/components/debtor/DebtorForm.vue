@@ -27,6 +27,7 @@ function fresh() {
   return {
     name: '', phone: '', national_id: '', line_id: '', address: '',
     principal: '', interest_rate: 2, interest_type: 'flat', installments: 6,
+    is_open_ended: false,
     start_date: today,
     first_due_date: '',
     bank: 'SCB', account_no: '',
@@ -106,8 +107,9 @@ async function submit() {
       ...form.value,
       principal: Number(form.value.principal),
       interest_rate: Number(form.value.interest_rate),
-      installments: parseInt(form.value.installments),
-      first_due_date: form.value.first_due_date || null,
+      installments: form.value.is_open_ended ? 1 : parseInt(form.value.installments),
+      first_due_date: form.value.is_open_ended ? null : (form.value.first_due_date || null),
+      is_open_ended: !!form.value.is_open_ended,
     }
     let d
     if (props.mode === 'edit' && props.initial?.id) {
@@ -149,6 +151,17 @@ function onUploadError(msg) { toast.error(msg) }
     <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div class="bg-white rounded-lg shadow-sm-soft border border-ink-100 p-6 sm:p-7 lg:col-span-2">
         <h2 class="t-h3 mb-4 flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-brand"></span> ข้อมูลการยืม</h2>
+
+        <!-- Open-ended toggle -->
+        <label class="flex items-center gap-3 mb-4 p-3 rounded-md bg-ink-50 cursor-pointer select-none hover:bg-ink-100/60 transition-colors">
+          <input type="checkbox" v-model="form.is_open_ended"
+            class="w-[18px] h-[18px] rounded border-ink-300 text-brand focus:ring-brand/40 cursor-pointer" />
+          <div class="flex-1">
+            <p class="text-[14px] font-medium text-ink-900">ยืมแบบไม่กำหนดงวด</p>
+            <p class="text-[12px] text-ink-400">ไม่มีตารางผ่อน ไม่มีวันครบกำหนด — เก็บคืนเท่าไหร่ก็ได้ ดอกเบี้ยคิดสะสมตามเดือนที่ผ่านไป (ตั้ง 0% = ไม่คิดดอก)</p>
+          </div>
+        </label>
+
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div :data-error="!!errors.principal">
             <BaseInput v-model="form.principal" type="number" label="จำนวนเงิน (฿)" prefix="฿" :error="errors.principal" required />
@@ -156,14 +169,14 @@ function onUploadError(msg) { toast.error(msg) }
           <div :data-error="!!errors.interest_rate">
             <BaseInput v-model="form.interest_rate" type="number" label="ดอกเบี้ย (%/เดือน)" suffix="%" :error="errors.interest_rate" required />
           </div>
-          <div :data-error="!!errors.installments">
+          <div v-if="!form.is_open_ended" :data-error="!!errors.installments">
             <BaseInput v-model="form.installments" type="number" label="จำนวนงวด (เดือน)" :error="errors.installments" required />
           </div>
           <BaseInput v-model="form.start_date" type="date" label="วันที่ยืม" :error="errors.start_date" required />
-          <BaseInput v-model="form.first_due_date" type="date" label="วันครบงวดแรก"
+          <BaseInput v-if="!form.is_open_ended" v-model="form.first_due_date" type="date" label="วันครบงวดแรก"
             :error="errors.first_due_date"
             hint="ถ้าไม่ระบุ จะใช้วันยืม + 1 เดือนอัตโนมัติ" />
-          <div class="sm:col-span-2">
+          <div v-if="!form.is_open_ended" class="sm:col-span-2">
             <p class="t-caption mb-2 ml-1">รูปแบบการคิดดอก</p>
             <div class="flex flex-wrap gap-2">
               <button v-for="t in interestTypes" :key="t.value" type="button" @click="form.interest_type = t.value"
@@ -180,7 +193,7 @@ function onUploadError(msg) { toast.error(msg) }
       <!-- live preview -->
       <div class="glass rounded-lg p-6 self-start sticky top-[68px]">
         <p class="t-caption mb-3">สรุปการคำนวณ</p>
-        <dl class="space-y-2.5">
+        <dl v-if="!form.is_open_ended" class="space-y-2.5">
           <div class="flex justify-between"><dt class="text-[13px] text-ink-600">เงินต้น</dt>
             <dd class="text-[15px] font-medium tabular-nums">{{ formatBaht(principalRef) }}</dd></div>
           <div class="flex justify-between"><dt class="text-[13px] text-ink-600">ดอกเบี้ยรวม</dt>
@@ -193,7 +206,19 @@ function onUploadError(msg) { toast.error(msg) }
             <dd class="text-[20px] font-semibold tabular-nums text-brand">{{ formatBaht(totalPayment) }}</dd>
           </div>
         </dl>
-        <p v-if="schedule.length" class="mt-4 text-[11px] text-ink-400">
+        <dl v-else class="space-y-2.5">
+          <div class="flex justify-between"><dt class="text-[13px] text-ink-600">เงินต้น</dt>
+            <dd class="text-[15px] font-medium tabular-nums">{{ formatBaht(principalRef) }}</dd></div>
+          <div class="flex justify-between"><dt class="text-[13px] text-ink-600">ดอกเบี้ย/เดือน</dt>
+            <dd class="text-[15px] font-medium tabular-nums text-green-600">{{ rateRef }}%</dd></div>
+          <div class="h-px bg-ink-200/60 my-2"></div>
+          <p class="text-[12px] text-ink-400 leading-relaxed">
+            ไม่มีตารางผ่อน — เก็บคืนเท่าไหร่ก็ได้ตามสะดวก<br>
+            <span v-if="rateRef > 0">ดอกเบี้ยจะสะสมตามเดือนที่ผ่านไปจากวันยืม</span>
+            <span v-else>ไม่คิดดอกเบี้ย</span>
+          </p>
+        </dl>
+        <p v-if="!form.is_open_ended && schedule.length" class="mt-4 text-[11px] text-ink-400">
           งวดแรกครบกำหนด {{ formatDate(schedule[0].dueDate, 'D MMM YYYY') }}
         </p>
       </div>

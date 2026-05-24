@@ -47,9 +47,24 @@ def _migrate_user_email_to_username() -> None:
         )
 
 
+def _migrate_add_is_open_ended() -> None:
+    """Add `is_open_ended` column to `debtor` if missing. Idempotent."""
+    with engine.begin() as conn:
+        tables = conn.execute(text(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='debtor'"
+        )).fetchall()
+        if not tables:
+            return
+        cols = [row[1] for row in conn.execute(text("PRAGMA table_info(debtor)")).fetchall()]
+        if "is_open_ended" in cols:
+            return
+        conn.execute(text("ALTER TABLE debtor ADD COLUMN is_open_ended BOOLEAN NOT NULL DEFAULT 0"))
+
+
 def init_db() -> None:
     from . import models  # noqa: F401  ensure metadata registered
     _migrate_user_email_to_username()
+    _migrate_add_is_open_ended()
     SQLModel.metadata.create_all(engine)
 
 
