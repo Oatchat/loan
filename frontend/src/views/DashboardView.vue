@@ -139,16 +139,17 @@ function statusVariant(s) {
         </button>
       </div>
       <BaseTable :columns="columns" :rows="recentRows" :loading="debtors.loading"
-        selectable v-model:selected="selectedIds">
+        selectable v-model:selected="selectedIds"
+        row-clickable @row-click="(row) => router.push(`/debtors/${row.id}`)">
         <template #cell-name="{ row }">
-          <button @click="router.push(`/debtors/${row.id}`)" class="flex items-center gap-3 hover:opacity-80 text-left">
-            <span class="w-9 h-9 rounded-full text-white font-semibold text-[12px] grid place-items-center"
+          <div class="flex items-center gap-3">
+            <span class="w-9 h-9 rounded-full text-white font-semibold text-[12px] grid place-items-center flex-shrink-0"
               :style="{ background: avatarColor(row.name) }">{{ initials(row.name) }}</span>
-            <div>
-              <p class="font-medium text-ink-900 leading-tight">{{ row.name }}</p>
+            <div class="min-w-0">
+              <p class="font-medium text-ink-900 leading-tight truncate">{{ row.name }}</p>
               <p class="t-small text-ink-400">{{ row.phone }}</p>
             </div>
-          </button>
+          </div>
         </template>
         <template #cell-principal="{ row }"><span class="tabular-nums">{{ formatBaht(row.principal) }}</span></template>
         <template #cell-balance="{ row }"><span class="tabular-nums font-medium">{{ formatBaht(row.balance) }}</span></template>

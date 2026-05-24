@@ -9,8 +9,10 @@ const props = defineProps({
   selectable: { type: Boolean, default: false },
   selected: { type: Array, default: () => [] },     // v-model:selected — array of row.id
   rowKey: { type: String, default: 'id' },
+  rowClickable: { type: Boolean, default: false },
+  minWidth: { type: String, default: '720px' },
 })
-const emit = defineEmits(['update:selected'])
+const emit = defineEmits(['update:selected', 'row-click'])
 
 const selectedSet = computed(() => new Set(props.selected))
 
@@ -44,8 +46,8 @@ function toggleAll() {
 </script>
 
 <template>
-  <div class="bg-white rounded-lg shadow-sm-soft border border-ink-100 overflow-hidden">
-    <table class="w-full text-[14px]">
+  <div class="bg-white rounded-lg shadow-sm-soft border border-ink-100 overflow-x-auto -webkit-overflow-scrolling-touch">
+    <table class="w-full text-[14px]" :style="{ minWidth }">
       <thead class="bg-ink-50 border-b border-ink-100">
         <tr>
           <th v-if="selectable" class="px-5 py-3 w-[42px]">
@@ -85,8 +87,10 @@ function toggleAll() {
           :style="{ animation: `fade-up 320ms cubic-bezier(.16,1,.3,1) ${idx * 30}ms both` }"
           :class="[
             row._highlight === 'overdue' ? 'border-l-[3px] border-l-danger bg-red-50/30' : 'hover:bg-brand-light/40',
-            selectable && selectedSet.has(row[rowKey]) ? 'bg-brand-light/40' : ''
-          ]">
+            selectable && selectedSet.has(row[rowKey]) ? 'bg-brand-light/40' : '',
+            rowClickable ? 'cursor-pointer' : '',
+          ]"
+          @click="rowClickable && emit('row-click', row)">
           <td v-if="selectable" class="px-5 py-3.5 align-middle">
             <input
               type="checkbox"

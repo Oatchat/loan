@@ -121,16 +121,17 @@ async function confirmDelete() {
     </div>
 
     <BaseTable :columns="columns" :rows="rows" :loading="debtors.loading"
-      selectable v-model:selected="selectedIds">
+      selectable v-model:selected="selectedIds"
+      row-clickable @row-click="(row) => router.push(`/debtors/${row.id}`)">
       <template #cell-name="{ row }">
-        <button @click="router.push(`/debtors/${row.id}`)" class="flex items-center gap-3 hover:opacity-80 text-left">
-          <span class="w-10 h-10 rounded-full text-white font-semibold text-[13px] grid place-items-center"
+        <div class="flex items-center gap-3">
+          <span class="w-10 h-10 rounded-full text-white font-semibold text-[13px] grid place-items-center flex-shrink-0"
             :style="{ background: avatarColor(row.name) }">{{ initials(row.name) }}</span>
-          <div>
-            <p class="font-medium text-ink-900 leading-tight">{{ row.name }}</p>
+          <div class="min-w-0">
+            <p class="font-medium text-ink-900 leading-tight truncate">{{ row.name }}</p>
             <p class="t-small text-ink-400">{{ row.phone }}</p>
           </div>
-        </button>
+        </div>
       </template>
       <template #cell-principal="{ row }">
         <p class="tabular-nums text-[14px]">{{ formatBaht(row.principal) }}</p>
@@ -149,17 +150,14 @@ async function confirmDelete() {
         <BaseBadge :variant="statusVariant(row.status)" :pulse="row.status === 'overdue'">{{ statusLabel(row.status) }}</BaseBadge>
       </template>
       <template #actions="{ row }">
-        <div class="inline-flex items-center gap-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          <button @click="router.push(`/debtors/${row.id}`)" title="ดู" class="p-2 rounded hover:bg-ink-100 text-ink-600">
-            <EyeIcon class="w-4 h-4" />
-          </button>
-          <button @click="router.push(`/debtors/${row.id}/edit`)" title="แก้ไข" class="p-2 rounded hover:bg-ink-100 text-ink-600">
+        <div class="inline-flex items-center gap-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200" @click.stop>
+          <button @click.stop="router.push(`/debtors/${row.id}/edit`)" title="แก้ไข" class="p-2 rounded hover:bg-ink-100 text-ink-600">
             <PencilSquareIcon class="w-4 h-4" />
           </button>
-          <button @click="router.push(`/debtors/${row.id}#pay`)" title="บันทึกชำระ" class="p-2 rounded hover:bg-brand-light text-brand">
+          <button @click.stop="router.push(`/debtors/${row.id}#pay`)" title="บันทึกชำระ" class="p-2 rounded hover:bg-brand-light text-brand">
             <BanknotesIcon class="w-4 h-4" />
           </button>
-          <button @click="deleting = row" title="ลบ" class="p-2 rounded hover:bg-red-50 text-danger">
+          <button @click.stop="deleting = row" title="ลบ" class="p-2 rounded hover:bg-red-50 text-danger">
             <TrashIcon class="w-4 h-4" />
           </button>
         </div>
