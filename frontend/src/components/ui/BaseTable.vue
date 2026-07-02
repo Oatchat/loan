@@ -46,7 +46,8 @@ function toggleAll() {
 </script>
 
 <template>
-  <div class="bg-white rounded-lg shadow-sm-soft border border-ink-100 overflow-x-auto -webkit-overflow-scrolling-touch">
+  <!-- Desktop / tablet: original table with horizontal scroll fallback -->
+  <div class="hidden md:block bg-white rounded-lg shadow-sm-soft border border-ink-100 overflow-x-auto -webkit-overflow-scrolling-touch">
     <table class="w-full text-[14px]" :style="{ minWidth }">
       <thead class="bg-ink-50 border-b border-ink-100">
         <tr>
@@ -112,5 +113,56 @@ function toggleAll() {
         </tr>
       </tbody>
     </table>
+  </div>
+
+  <!-- Mobile: stacked card list — every column stays visible instead of scrolling off-screen -->
+  <div class="md:hidden bg-white rounded-lg shadow-sm-soft border border-ink-100 overflow-hidden">
+    <div v-if="loading">
+      <div v-for="i in 4" :key="`m-sk-${i}`" class="p-4 border-b border-ink-100 last:border-0 space-y-2">
+        <div class="h-4 bg-ink-100 rounded animate-pulse-soft w-1/2" />
+        <div class="h-3 bg-ink-100 rounded animate-pulse-soft w-3/4" />
+        <div class="h-3 bg-ink-100 rounded animate-pulse-soft w-2/3" />
+      </div>
+    </div>
+    <div v-else-if="!rows.length" class="px-5 py-14 text-center text-ink-400">
+      <slot name="empty">{{ empty }}</slot>
+    </div>
+    <div v-else v-for="(row, idx) in rows" :key="row[rowKey] ?? `m-${idx}`"
+      class="p-4 border-b border-ink-100 last:border-0 transition-colors"
+      :style="{ animation: `fade-up 320ms cubic-bezier(.16,1,.3,1) ${idx * 30}ms both` }"
+      :class="[
+        row._highlight === 'overdue' ? 'border-l-[3px] border-l-danger bg-red-50/30' : '',
+        selectable && selectedSet.has(row[rowKey]) ? 'bg-brand-light/40' : '',
+        rowClickable ? 'cursor-pointer active:bg-brand-light/40' : '',
+      ]"
+      @click="rowClickable && emit('row-click', row)">
+      <div class="flex items-start gap-3">
+        <input v-if="selectable"
+          type="checkbox"
+          :checked="selectedSet.has(row[rowKey])"
+          @change="toggleRow(row[rowKey])"
+          @click.stop
+          class="mt-1 w-[16px] h-[16px] rounded border-ink-300 text-brand focus:ring-brand/40 cursor-pointer flex-shrink-0"
+          :aria-label="`เลือกแถว ${row.name || idx + 1}`"
+        />
+        <div class="flex-1 min-w-0 space-y-2">
+          <!-- first column: header (usually name/avatar) -->
+          <div>
+            <slot :name="`cell-${columns[0].key}`" :row="row" :value="row[columns[0].key]">{{ row[columns[0].key] }}</slot>
+          </div>
+          <!-- remaining columns as label:value rows -->
+          <div v-for="c in columns.slice(1)" :key="c.key"
+            class="flex items-center justify-between gap-3 text-[13px]">
+            <span class="text-ink-400">{{ c.label }}</span>
+            <span class="text-ink-900 font-medium text-right">
+              <slot :name="`cell-${c.key}`" :row="row" :value="row[c.key]">{{ row[c.key] }}</slot>
+            </span>
+          </div>
+          <div v-if="$slots.actions" class="pt-2 border-t border-ink-100">
+            <slot name="actions" :row="row" />
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>

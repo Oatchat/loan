@@ -427,7 +427,7 @@ const bannerColor = computed(() => {
                   <td class="py-2.5 pr-3">{{ formatDate(row.dueDate) }}</td>
                   <td class="py-2.5 pr-3 text-right tabular-nums">{{ formatBaht(row.payment) }}</td>
                   <td class="py-2.5 pr-3 text-right tabular-nums">{{ row.paid ? formatBaht(row.paid) : '—' }}</td>
-                  <td class="py-2.5 pr-3 text-right tabular-nums">{{ formatBaht(row.balance) }}</td>
+                  <td class="py-2.5 pr-3 text-right tabular-nums">{{ formatBaht(Math.max(0, row.payment - (row.paid || 0))) }}</td>
                   <td class="py-2.5 pr-3">
                     <BaseBadge :variant="{paid:'success', late:'warning', overdue:'danger', pending:'neutral'}[row.status]">
                       {{ {paid:'ชำระแล้ว', late:'ล่าช้า', overdue:'เกินกำหนด', pending:'รอ'}[row.status] }}

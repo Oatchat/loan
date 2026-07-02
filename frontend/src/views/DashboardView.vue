@@ -2,7 +2,7 @@
 import { onMounted, computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  UsersIcon, BanknotesIcon, ArrowTrendingUpIcon, ExclamationTriangleIcon, CheckCircleIcon,
+  UsersIcon, BanknotesIcon, ArrowTrendingUpIcon, ExclamationTriangleIcon,
   PlusIcon, XMarkIcon, ChevronRightIcon,
 } from '@heroicons/vue/24/outline'
 import StatCard from '../components/ui/StatCard.vue'
@@ -69,7 +69,7 @@ function statusVariant(s) {
     </div>
 
     <!-- stat cards (clickable → filter list) -->
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
       <router-link to="/debtors" class="focus-visible:outline-none rounded-lg">
         <StatCard label="ลูกหนี้ทั้งหมด" :value="debtors.list.length" accent="info" :icon="UsersIcon" />
       </router-link>
@@ -81,9 +81,6 @@ function statusVariant(s) {
       </router-link>
       <router-link :to="{ path: '/debtors', query: { status: 'overdue' } }" class="focus-visible:outline-none rounded-lg">
         <StatCard label="เกินกำหนด" :value="debtors.overdueCount" accent="danger" :icon="ExclamationTriangleIcon" />
-      </router-link>
-      <router-link :to="{ path: '/debtors', query: { status: 'closed' } }" class="focus-visible:outline-none rounded-lg">
-        <StatCard label="ปิดบัญชีแล้ว" :value="debtors.closedCount" accent="neutral" :icon="CheckCircleIcon" />
       </router-link>
     </div>
 
