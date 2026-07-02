@@ -38,7 +38,6 @@ const recentRows = computed(() =>
   debtors.list
     .filter(d => d.status !== 'closed')
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    .slice(0, 6)
     .map(d => ({ ...d, _highlight: d.status === 'overdue' ? 'overdue' : undefined }))
 )
 
@@ -128,12 +127,12 @@ function statusVariant(s) {
       </div>
     </section>
 
-    <!-- recent debtors table -->
+    <!-- all active debtors -->
     <section>
       <div class="flex items-baseline justify-between mb-3">
-        <h2 class="t-h2 text-ink-900">ลูกหนี้ล่าสุด</h2>
+        <h2 class="t-h2 text-ink-900">ลูกหนี้ทั้งหมด</h2>
         <button @click="router.push('/debtors')" class="text-[13px] font-medium text-brand hover:underline flex items-center gap-1">
-          ดูทั้งหมด <ChevronRightIcon class="w-4 h-4" />
+          จัดการ <ChevronRightIcon class="w-4 h-4" />
         </button>
       </div>
       <BaseTable :columns="columns" :rows="recentRows" :loading="debtors.loading"
