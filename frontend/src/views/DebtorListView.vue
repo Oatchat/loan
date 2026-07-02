@@ -28,9 +28,9 @@ const filters = [
 
 const sortOptions = [
   { value: 'recent', label: 'ล่าสุด' },
-  { value: 'name', label: 'ชื่อ' },
-  { value: 'balance', label: 'ยอดคงเหลือสูงสุด' },
-  { value: 'due', label: 'วันครบกำหนด' },
+  { value: 'name', label: 'ตามชื่อ' },
+  { value: 'balance', label: 'ยอดคงเหลือ' },
+  { value: 'due', label: 'ครบกำหนด' },
 ]
 
 const search = ref('')
@@ -54,7 +54,9 @@ watch(sort, refresh)
 onMounted(refresh)
 
 const rows = computed(() =>
-  debtors.list.map(d => ({ ...d, _highlight: d.status === 'overdue' ? 'overdue' : undefined }))
+  debtors.list
+    .filter(d => status.value === 'closed' || d.status !== 'closed')
+    .map(d => ({ ...d, _highlight: d.status === 'overdue' ? 'overdue' : undefined }))
 )
 
 const columns = [
@@ -104,8 +106,8 @@ async function confirmDelete() {
         <input v-model="search" type="search" placeholder="ค้นหาชื่อหรือเบอร์โทร..."
           class="w-full h-11 pl-11 pr-4 rounded-full bg-white border border-ink-200 outline-none text-[14px] focus:border-brand focus:ring-4 focus:ring-brand/15 transition-all duration-220" />
       </div>
-      <div class="w-48">
-        <BaseSelect v-model="sort" :options="sortOptions" />
+      <div class="w-full sm:w-52">
+        <BaseSelect v-model="sort" :options="sortOptions" label="เรียงตาม" />
       </div>
     </div>
 

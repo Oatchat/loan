@@ -35,7 +35,8 @@ const upcoming = computed(() => {
 })
 
 const recentRows = computed(() =>
-  [...debtors.list]
+  debtors.list
+    .filter(d => d.status !== 'closed')
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
     .slice(0, 6)
     .map(d => ({ ...d, _highlight: d.status === 'overdue' ? 'overdue' : undefined }))

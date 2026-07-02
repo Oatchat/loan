@@ -37,9 +37,14 @@ const wrapCls = computed(() => [
     <div :class="wrapCls">
       <label v-if="label" :for="id"
         class="absolute pointer-events-none transition-all duration-220 ease-apple"
-        :class="floating
-          ? 'top-1.5 left-3 text-[11px] font-medium tracking-wide uppercase text-ink-400'
-          : 'top-1/2 -translate-y-1/2 left-4 text-[15px] text-ink-400'">
+        :class="[
+          floating
+            ? 'top-1.5 text-[11px] font-medium tracking-wide uppercase text-ink-400'
+            : 'top-1/2 -translate-y-1/2 text-[15px] text-ink-400',
+          floating
+            ? (prefix ? 'left-8' : 'left-3')
+            : (prefix ? 'left-10' : 'left-4'),
+        ]">
         {{ label }}<span v-if="required" class="text-danger ml-0.5">*</span>
       </label>
       <div class="flex items-center">
