@@ -32,6 +32,7 @@ export const useAuthStore = defineStore('auth', {
       this.user = null
       localStorage.removeItem(TOKEN_KEY)
       localStorage.removeItem(USER_KEY)
+      localStorage.removeItem('debttrack.debtors.v1')
     },
     async fetchMe() {
       const { data } = await api.get('/auth/me')

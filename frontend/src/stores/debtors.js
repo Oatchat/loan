@@ -1,9 +1,26 @@
 import { defineStore } from 'pinia'
 import { api } from '../plugins/axios'
 
+const CACHE_KEY = 'debttrack.debtors.v1'
+
+function readCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+function writeCache(list) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(list))
+  } catch {}
+}
+
 export const useDebtorsStore = defineStore('debtors', {
   state: () => ({
-    list: [],
+    list: readCache(),
     current: null,
     loading: false,
     query: { q: '', status: 'all', sort: 'recent' },
@@ -19,7 +36,10 @@ export const useDebtorsStore = defineStore('debtors', {
   },
   actions: {
     async fetchAll() {
-      this.loading = true
+      // Only show blocking spinner on the very first load (no cached data).
+      // With cached data, refresh silently so the UI stays interactive.
+      const isFirstLoad = this.list.length === 0
+      if (isFirstLoad) this.loading = true
       try {
         const params = {
           q: this.query.q || undefined,
@@ -28,8 +48,11 @@ export const useDebtorsStore = defineStore('debtors', {
         }
         const { data } = await api.get('/debtors', { params })
         this.list = data
+        // Only persist the unfiltered "all" view — filtered results would
+        // corrupt the dashboard stats on next cold load.
+        if (!params.q && !params.status) writeCache(data)
       } finally {
-        this.loading = false
+        if (isFirstLoad) this.loading = false
       }
     },
     async fetchOne(id) {
