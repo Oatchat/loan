@@ -29,9 +29,9 @@ function doLogout() {
 </script>
 
 <template>
-  <header class="sticky top-0 z-40 h-[52px] border-b border-black/[0.06]"
-    style="background: rgba(255,255,255,0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);">
-    <div class="h-full max-w-[1400px] mx-auto px-6 lg:px-12 flex items-center justify-between gap-6">
+  <header class="sticky top-0 z-40 border-b border-black/[0.06]"
+    style="background: rgba(255,255,255,0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); padding-top: env(safe-area-inset-top);">
+    <div class="h-[52px] max-w-[1400px] mx-auto px-6 lg:px-12 flex items-center justify-between gap-6">
       <RouterLink to="/" class="flex items-center gap-2 group">
         <div class="w-7 h-7 rounded-md bg-brand grid place-items-center text-white font-bold text-[14px]">฿</div>
         <span class="font-semibold text-[16px] tracking-tight text-ink-900">DebtTrack</span>
