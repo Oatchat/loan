@@ -93,6 +93,7 @@ class PaymentOut(BaseModel):
     amount: float
     paid_date: date
     installment_no: Optional[int]
+    is_interest_only: bool = False
     status: str
     note: Optional[str]
     created_at: datetime
@@ -126,6 +127,7 @@ class PaymentCreate(BaseModel):
     amount: float = Field(gt=0)
     paid_date: date
     installment_no: Optional[int] = None
+    is_interest_only: bool = False
     note: Optional[str] = None
 
 

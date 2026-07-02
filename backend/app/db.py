@@ -61,10 +61,25 @@ def _migrate_add_is_open_ended() -> None:
         conn.execute(text("ALTER TABLE debtor ADD COLUMN is_open_ended BOOLEAN NOT NULL DEFAULT 0"))
 
 
+def _migrate_add_is_interest_only() -> None:
+    """Add `is_interest_only` column to `payment` if missing. Idempotent."""
+    with engine.begin() as conn:
+        tables = conn.execute(text(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='payment'"
+        )).fetchall()
+        if not tables:
+            return
+        cols = [row[1] for row in conn.execute(text("PRAGMA table_info(payment)")).fetchall()]
+        if "is_interest_only" in cols:
+            return
+        conn.execute(text("ALTER TABLE payment ADD COLUMN is_interest_only BOOLEAN NOT NULL DEFAULT 0"))
+
+
 def init_db() -> None:
     from . import models  # noqa: F401  ensure metadata registered
     _migrate_user_email_to_username()
     _migrate_add_is_open_ended()
+    _migrate_add_is_interest_only()
     SQLModel.metadata.create_all(engine)
 
 

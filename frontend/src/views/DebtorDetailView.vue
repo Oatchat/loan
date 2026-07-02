@@ -51,11 +51,13 @@ const sortedPayments = computed(() =>
 
 const paymentsByInstallment = computed(() => {
   const map = new Map()
-  for (const p of sortedPayments.value) {
+  // Interest-only payments never map to a schedule row — they just cover the
+  // month's interest and leave principal untouched.
+  const contract = sortedPayments.value.filter(p => !p.is_interest_only)
+  for (const p of contract) {
     if (p.installment_no != null && !map.has(p.installment_no)) map.set(p.installment_no, p)
   }
-  // fallback: payments without installment_no — fill remaining slots in order
-  const orphans = sortedPayments.value.filter(p => p.installment_no == null)
+  const orphans = contract.filter(p => p.installment_no == null)
   return { map, orphans }
 })
 
@@ -95,16 +97,27 @@ async function confirmDeletePayment() {
 
 // payment modal
 const showPay = ref(false)
-const pay = ref({ amount: '', paid_date: dayjs().format('YYYY-MM-DD'), note: '', installment_no: null })
+const pay = ref({ amount: '', paid_date: dayjs().format('YYYY-MM-DD'), note: '', installment_no: null, is_interest_only: false })
 const payErrors = ref({})
 const payLoading = ref(false)
 const payInstallmentMeta = ref(null)  // { month, dueDate, payment } when opened from tick
 
+const monthlyInterestAmount = computed(() =>
+  Math.round(((d.value?.principal || 0) * (d.value?.interest_rate || 0) / 100) * 100) / 100
+)
+
 function openPayBlank() {
-  pay.value = { amount: '', paid_date: dayjs().format('YYYY-MM-DD'), note: '', installment_no: null }
+  pay.value = { amount: '', paid_date: dayjs().format('YYYY-MM-DD'), note: '', installment_no: null, is_interest_only: false }
   payInstallmentMeta.value = null
   payErrors.value = {}
   showPay.value = true
+}
+
+function toggleInterestOnly() {
+  pay.value.is_interest_only = !pay.value.is_interest_only
+  if (pay.value.is_interest_only && !pay.value.amount) {
+    pay.value.amount = monthlyInterestAmount.value
+  }
 }
 
 // ── Multi-tick selection in schedule table ───────────────────────────────────
@@ -189,12 +202,20 @@ async function submitPayment() {
       amount: Number(pay.value.amount),
       paid_date: pay.value.paid_date,
       note: pay.value.note || null,
+      is_interest_only: pay.value.is_interest_only || false,
     }
-    if (pay.value.installment_no != null) payload.installment_no = pay.value.installment_no
+    // Interest-only payments are not tied to a specific installment.
+    if (!payload.is_interest_only && pay.value.installment_no != null) {
+      payload.installment_no = pay.value.installment_no
+    }
     await debtors.addPayment(d.value.id, payload)
-    toast.success(`บันทึกชำระ ${formatBaht(payload.amount)} เรียบร้อย`)
+    toast.success(
+      pay.value.is_interest_only
+        ? `บันทึกดอกเบี้ย ${formatBaht(payload.amount)} เรียบร้อย`
+        : `บันทึกชำระ ${formatBaht(payload.amount)} เรียบร้อย`
+    )
     showPay.value = false
-    pay.value = { amount: '', paid_date: dayjs().format('YYYY-MM-DD'), note: '', installment_no: null }
+    pay.value = { amount: '', paid_date: dayjs().format('YYYY-MM-DD'), note: '', installment_no: null, is_interest_only: false }
     payInstallmentMeta.value = null
   } finally { payLoading.value = false }
 }
@@ -365,8 +386,9 @@ const bannerColor = computed(() => {
               class="relative flex gap-4 pb-5 last:pb-0"
               :style="{ animation: `fade-up 320ms cubic-bezier(.16,1,.3,1) ${idx * 50}ms both` }">
               <div :class="['relative z-10 w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0',
-                p.status === 'late' ? 'bg-amber-100' : 'bg-green-100']">
-                <CheckCircleIcon :class="['w-4 h-4', p.status === 'late' ? 'text-amber-600' : 'text-green-600']" />
+                p.is_interest_only ? 'bg-blue-100' : (p.status === 'late' ? 'bg-amber-100' : 'bg-green-100')]">
+                <CheckCircleIcon :class="['w-4 h-4',
+                  p.is_interest_only ? 'text-brand' : (p.status === 'late' ? 'text-amber-600' : 'text-green-600')]" />
               </div>
               <div class="flex-1 flex items-start justify-between gap-3">
                 <div>
@@ -375,7 +397,8 @@ const bannerColor = computed(() => {
                   <p v-if="p.note" class="text-[12px] text-ink-600 mt-1">"{{ p.note }}"</p>
                 </div>
                 <div class="flex items-center gap-1">
-                  <BaseBadge :variant="p.status === 'late' ? 'warning' : 'success'">
+                  <BaseBadge v-if="p.is_interest_only" variant="info">ดอกเบี้ย</BaseBadge>
+                  <BaseBadge v-else :variant="p.status === 'late' ? 'warning' : 'success'">
                     {{ p.status === 'late' ? 'ล่าช้า' : 'ชำระแล้ว' }}
                   </BaseBadge>
                   <button @click="deletingPay = p" title="ลบรายการนี้"
@@ -575,13 +598,27 @@ const bannerColor = computed(() => {
     <!-- Payment modal -->
     <BaseModal :open="showPay" title="บันทึกชำระเงิน" @close="showPay = false">
       <div class="space-y-4">
-        <BaseInput v-model="pay.amount" type="number" label="จำนวนเงิน (฿)" prefix="฿" :error="payErrors.amount" required />
+        <label class="flex items-start gap-3 p-3 rounded-md border border-ink-200 cursor-pointer hover:border-brand transition-colors"
+          :class="pay.is_interest_only ? 'border-brand bg-brand-light/40' : ''">
+          <input type="checkbox" :checked="pay.is_interest_only" @change="toggleInterestOnly"
+            class="mt-0.5 w-[16px] h-[16px] rounded border-ink-300 text-brand focus:ring-brand/40 cursor-pointer" />
+          <div class="flex-1">
+            <p class="text-[14px] font-medium text-ink-900">จ่ายเฉพาะดอกเบี้ย</p>
+            <p class="text-[12px] text-ink-400 mt-0.5">
+              ไม่ลดยอดเงินต้น — ต่อดอกเดือนนี้
+              <span v-if="monthlyInterestAmount">(ประมาณ {{ formatBaht(monthlyInterestAmount) }}/ด)</span>
+            </p>
+          </div>
+        </label>
+        <BaseInput v-model="pay.amount" type="number" label="จำนวนเงิน (฿)" :error="payErrors.amount" required />
         <BaseInput v-model="pay.paid_date" type="date" label="วันที่ชำระ" :error="payErrors.paid_date" required />
         <BaseTextarea v-model="pay.note" label="หมายเหตุ" rows="2" placeholder="optional..." />
       </div>
       <template #actions>
         <BaseButton variant="ghost" @click="showPay = false">ยกเลิก</BaseButton>
-        <BaseButton variant="primary" :loading="payLoading" @click="submitPayment">บันทึกชำระ</BaseButton>
+        <BaseButton variant="primary" :loading="payLoading" @click="submitPayment">
+          {{ pay.is_interest_only ? 'บันทึกดอกเบี้ย' : 'บันทึกชำระ' }}
+        </BaseButton>
       </template>
     </BaseModal>
 

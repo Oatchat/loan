@@ -56,6 +56,9 @@ class Payment(SQLModel, table=True):
     amount: float
     paid_date: date
     installment_no: Optional[int] = None
+    # Interest-only payments (ต่อดอก) do NOT reduce the outstanding balance —
+    # they cover the accrued interest while the principal keeps rolling.
+    is_interest_only: bool = False
     status: str = "paid"   # paid | late
     note: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)

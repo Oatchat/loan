@@ -18,7 +18,11 @@ router = APIRouter(prefix="/debtors", tags=["debtors"])
 
 
 def _enrich(d: Debtor) -> DebtorOut:
-    total_paid = sum(p.amount for p in d.payments) if d.payments else 0.0
+    payments = list(d.payments or [])
+    total_paid = sum(p.amount for p in payments)
+    # Interest-only payments cover accrued interest without reducing principal,
+    # so they must NOT count toward the outstanding balance.
+    balance_paid = sum(p.amount for p in payments if not getattr(p, "is_interest_only", False))
     today = date.today()
     is_open = bool(getattr(d, "is_open_ended", False))
 
@@ -27,7 +31,7 @@ def _enrich(d: Debtor) -> DebtorOut:
         months_elapsed = max(0, (today.year - d.start_date.year) * 12 + (today.month - d.start_date.month))
         accrued_interest = d.principal * (d.interest_rate / 100.0) * months_elapsed
         total_payment = d.principal + accrued_interest
-        balance = total_payment - total_paid
+        balance = total_payment - balance_paid
         next_due = None
         days_until = None
 
@@ -39,10 +43,10 @@ def _enrich(d: Debtor) -> DebtorOut:
             d.principal, d.interest_rate, d.installments, d.interest_type,
             d.start_date, d.first_due_date,
         )
-        balance = sched.total_payment - total_paid
+        balance = sched.total_payment - balance_paid
         next_due = None
         days_until = None
-        paid_count = len([p for p in d.payments if p.status == "paid"]) if d.payments else 0
+        paid_count = len([p for p in payments if p.status == "paid" and not getattr(p, "is_interest_only", False)])
         if paid_count < d.installments:
             idx = paid_count  # next unpaid
             next_due = sched.schedule[idx].due_date if idx < len(sched.schedule) else None
